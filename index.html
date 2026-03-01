@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SASG BBCode Editor</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(180deg, #143a57, #1f4e73);
+            color: white;
+        }
+
+        .header {
+            text-align: center;
+            padding: 50px 20px 20px 20px;
+        }
+
+       .header img {
+    width: 350px;
+    max-width: 90%;
+    margin-bottom: 25px;
+    filter: drop-shadow(0 10px 20px rgba(0,0,0,0.4));
+}
+
+        .header h1 {
+            font-size: 40px;
+            margin: 0;
+            letter-spacing: 1px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            background: #f4f6f8;
+            border-radius: 18px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.25);
+            color: #222;
+        }
+
+        #bbcodeBox {
+            width: 100%;
+            height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 12px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            outline: none;
+            border-radius: 10px;
+            background: white;
+        }
+
+        .highlighted {
+            background-color: #ffeb3b;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+
+        button {
+            background: #1f4e73;
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: 0.2s ease;
+        }
+
+        button:hover {
+            background: #143a57;
+            transform: translateY(-1px);
+        }
+
+        .edit-item {
+            margin-bottom: 12px;
+            padding: 10px;
+            background: #e9eef3;
+            border-radius: 10px;
+        }
+
+        .edit-item strong {
+            display: inline-block;
+            width: 90px;
+        }
+
+        .edit-item input {
+            padding: 6px 8px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            width: 50%;
+        }
+
+        .scan-btn {
+            margin-top: 15px;
+        }
+
+        h2 {
+            margin-top: 0;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="header">
+     <img src="https://i.ibb.co/9C0TQdM/logo.png" alt="Company Logo" class="logo">
+    <h1>SASG BBCode Editor</h1>
+</div>
+
+<div class="container">
+
+    <h2>BBCode Input</h2>
+
+    <div id="bbcodeBox" contenteditable="true">
+    </div>
+
+    <button class="scan-btn" onclick="scanBBCode()">Scan</button>
+
+    <div id="editArea"></div>
+
+</div>
+
+<script>
+let matches = [];
+
+function getBBCodeText() {
+    return document.getElementById("bbcodeBox").innerText;
+}
+
+function clearHighlights() {
+    const box = document.getElementById("bbcodeBox");
+    box.innerHTML = box.innerText;
+}
+
+function scanBBCode() {
+    clearHighlights();
+
+    const text = getBBCodeText();
+    const editArea = document.getElementById("editArea");
+    editArea.innerHTML = "";
+    matches = [];
+
+    let index = 0;
+
+    const attrRegex = /\[(\w+)=([^\]]+)\]/g;
+    let match;
+
+    while ((match = attrRegex.exec(text)) !== null) {
+        matches.push({
+            type: "attribute",
+            fullMatch: match[0],
+            tag: match[1],
+            value: match[2]
+        });
+
+        addEditor(index, match[1], match[2]);
+        index++;
+    }
+
+    const imgRegex = /\[img(?: [^\]]*)?\]([\s\S]*?)\[\/img\]/g;
+
+    while ((match = imgRegex.exec(text)) !== null) {
+        matches.push({
+            type: "image",
+            fullMatch: match[0],
+            value: match[1]
+        });
+
+        addEditor(index, "img URL", match[1]);
+        index++;
+    }
+
+    if (matches.length === 0) {
+        editArea.innerHTML = "<p>No editable BBCode attributes found.</p>";
+    }
+}
+
+function addEditor(index, label, value) {
+    const editArea = document.getElementById("editArea");
+
+    const div = document.createElement("div");
+    div.className = "edit-item";
+
+    div.innerHTML = `
+        <strong>${label}</strong>
+        <input type="text" id="edit-${index}" value="${value}">
+        <button onclick="highlightMatch(${index})">Highlight</button>
+        <button onclick="applyChange(${index})">Apply</button>
+    `;
+
+    editArea.appendChild(div);
+}
+
+function highlightMatch(i) {
+    clearHighlights();
+
+    const box = document.getElementById("bbcodeBox");
+    let html = box.innerText;
+
+    const target = matches[i].fullMatch;
+    const highlighted = `<span class="highlighted">${target}</span>`;
+
+    html = html.replace(target, highlighted);
+    box.innerHTML = html;
+}
+
+function applyChange(i) {
+    clearHighlights();
+
+    const box = document.getElementById("bbcodeBox");
+    let text = box.innerText;
+    const newValue = document.getElementById(`edit-${i}`).value;
+
+    if (matches[i].type === "attribute") {
+        const newTag = `[${matches[i].tag}=${newValue}]`;
+        text = text.replace(matches[i].fullMatch, newTag);
+    }
+
+    if (matches[i].type === "image") {
+        const newTag = matches[i].fullMatch.replace(matches[i].value, newValue);
+        text = text.replace(matches[i].fullMatch, newTag);
+    }
+
+    box.innerText = text;
+    scanBBCode();
+}
+</script>
+
+</body>
+</html>
